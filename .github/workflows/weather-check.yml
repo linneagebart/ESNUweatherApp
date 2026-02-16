@@ -215,52 +215,52 @@ jobs:
             TITLE="${EMOJI}"
           
           elif [ ${TEMP} -le -20 ]; then
-            EMOJI="🥶"
-            TITLE="Welcome to Yakutsk ${EMOJI}"
+            EMOJI="🥶☃️❄️🌬️"
+            TITLE="Welcome to Yakutsk! ${EMOJI}"
             MESSAGE="Temperature: ${TEMP}°C"
           
           elif [ ${TEMP} -gt -20 ] && [ ${TEMP} -le -5 ]; then
-            EMOJI="🌨️"
-            TITLE="${EMOJI}"
-            MESSAGE="Ingen sommarvärme än - Temperature: ${TEMP}°C"
+            EMOJI="😶‍🌫️🥺⛄️"
+            TITLE="Ingen sommarvärme än ${EMOJI}"
+            MESSAGE="Temperature: ${TEMP}°C"
           
           elif [ ${TEMP} -gt -5 ] && [ ${TEMP} -le 10 ]; then
-            EMOJI="🌸"
-            TITLE="${EMOJI}"
-            MESSAGE="Våren är här - Temperature: ${TEMP}°C"
+            EMOJI="🌸👏"
+            TITLE="Våren är här ${EMOJI}"
+            MESSAGE="Temperature: ${TEMP}°C"
           
           elif [ ${TEMP} -ge 30 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
-            EMOJI="☀️☀️☀️☀️☀️🌴"
-            TITLE="${EMOJI}"
-            MESSAGE="Sun is shining, summer is here ☀️ Temperature: ${TEMP}°C"
+            EMOJI="☀️☀️☀️☀️☀️🏝️🏖️"
+            TITLE="Sun is shining, summer is here ${EMOJI}"
+            MESSAGE="Temperature: ${TEMP}°C"
           
           elif [ ${TEMP} -ge 28 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️☀️☀️☀️☀️"
-            TITLE="${EMOJI}"
-            MESSAGE="Sun is shining ☀️ Temperature: ${TEMP}°C"
+            TITLE="Sun is shining, summer is here ${EMOJI}"
+            MESSAGE="Temperature: ${TEMP}°C"
           
           elif [ ${TEMP} -ge 26 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️☀️☀️☀️"
-            TITLE="${EMOJI}"
-            MESSAGE="Sun is shining ☀️ Temperature: ${TEMP}°C"
+            TITLE="Sun is shining, summer is here ${EMOJI}"
+            MESSAGE="Temperature: ${TEMP}°C"
           
           elif [ ${TEMP} -ge 24 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️☀️☀️"
-            TITLE="${EMOJI}"
-            MESSAGE="Sun is shining ☀️ Temperature: ${TEMP}°C"
+            TITLE="Sun is shining, summer is here ${EMOJI}"
+            MESSAGE=" Temperature: ${TEMP}°C"
           
           elif [ ${TEMP} -ge 22 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️☀️"
-            TITLE="${EMOJI}"
-            MESSAGE="Sun is shining ☀️ Temperature: ${TEMP}°C"
+            TITLE="Sun is shining, summer is here ${EMOJI}"
+            MESSAGE="Temperature: ${TEMP}°C"
           
           elif [ ${TEMP} -ge 20 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️"
-            TITLE="${EMOJI}"
-            MESSAGE="Sun is shining ☀️ Temperature: ${TEMP}°C"
+            TITLE="Sun is shining, summer is here ${EMOJI}"
+            MESSAGE="Temperature: ${TEMP}°C"
           
           else
-            EMOJI="🌤️"
+            EMOJI="🌤️🏞️"
             TITLE="Umeå Weather ${EMOJI}"
             MESSAGE="Temperature: ${TEMP}°C"
           fi
