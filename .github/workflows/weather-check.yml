@@ -266,7 +266,7 @@ jobs:
           fi
           
           curl -H "Title: ${TITLE}" \
-               -H "Priority: urgent" \
+               -H "Priority: default" \
                -d "${MESSAGE}
           
           Temperatur: ${TEMP}°C (Daggpunkt: ${DEW}°C)
