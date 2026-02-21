@@ -1,178 +1,3 @@
-name: ESNU Weather Check
-
-on:
-  schedule:
-    - cron: '35 5 * * *'
-    - cron: '00 10 * * *'
-    - cron: '00 13 * * *'
-    - cron: '00 15 * * *'
-    - cron: '05 20 * * *'
-  
-  workflow_dispatch:
-
-jobs:
-  check-weather:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Fetch METAR data
-        id: fetch
-        run: |
-          RESPONSE=$(curl -s "https://aro.lfv.se/Links/Link/ViewLink?TorLinkId=314&type=MET")
-          
-          CLEAN_TEXT=$(echo "$RESPONSE" | sed 's/<[^>]*>//g' | sed 's/&nbsp;/ /g' | sed 's/&[a-z]*;//g' | tr '\n' ' ')
-          
-          METAR=$(echo "$CLEAN_TEXT" | grep -oP 'ESNU[^=]*=' | tr -s ' ' | xargs)
-          
-          if [ -z "$METAR" ]; then
-            echo "Failed to extract METAR data"
-            exit 1
-          fi
-          
-          echo "Full METAR: $METAR"
-          
-          TEMP=$(echo "$METAR" | grep -oP '(M?\d{2})/M?\d{2}' | cut -d'/' -f1)
-          
-          if [ -z "$TEMP" ]; then
-            echo "Failed to extract temperature"
-            exit 1
-          fi
-          
-          if [[ $TEMP == M* ]]; then
-            TEMP_C="-${TEMP:1}"
-            TEMP_C=$(echo $TEMP_C | sed 's/-0/-/')
-          else
-            TEMP_C="${TEMP}"
-            TEMP_C=$(echo $TEMP_C | sed 's/^0//')
-          fi
-          
-          DEWPOINT=$(echo "$METAR" | grep -oP '(M?\d{2})/(M?\d{2})' | cut -d'/' -f2)
-          if [[ $DEWPOINT == M* ]]; then
-            DEW_C="-${DEWPOINT:1}"
-            DEW_C=$(echo $DEW_C | sed 's/-0/-/')
-          else
-            DEW_C="${DEWPOINT}"
-            DEW_C=$(echo $DEW_C | sed 's/^0//')
-          fi
-          
-          # Extract wind with direction name
-          WIND=$(echo "$METAR" | grep -oP '\d{5}KT' | head -1)
-          if [ -n "$WIND" ]; then
-            WIND_DIR="${WIND:0:3}"
-            WIND_SPEED="${WIND:3:2}"
-            WIND_SPEED=$((10#$WIND_SPEED))
-            
-            # Convert degrees to cardinal direction (Swedish)
-            DEGREES=$((10#$WIND_DIR))
-            if [ $DEGREES -ge 349 ] || [ $DEGREES -le 11 ]; then
-              DIR_NAME="Nord"
-            elif [ $DEGREES -ge 12 ] && [ $DEGREES -le 33 ]; then
-              DIR_NAME="Nordnordost"
-            elif [ $DEGREES -ge 34 ] && [ $DEGREES -le 56 ]; then
-              DIR_NAME="Nordost"
-            elif [ $DEGREES -ge 57 ] && [ $DEGREES -le 78 ]; then
-              DIR_NAME="Ostnordost"
-            elif [ $DEGREES -ge 79 ] && [ $DEGREES -le 101 ]; then
-              DIR_NAME="Ost"
-            elif [ $DEGREES -ge 102 ] && [ $DEGREES -le 123 ]; then
-              DIR_NAME="Ostsydost"
-            elif [ $DEGREES -ge 124 ] && [ $DEGREES -le 146 ]; then
-              DIR_NAME="Sydost"
-            elif [ $DEGREES -ge 147 ] && [ $DEGREES -le 168 ]; then
-              DIR_NAME="Sydsydost"
-            elif [ $DEGREES -ge 169 ] && [ $DEGREES -le 191 ]; then
-              DIR_NAME="Syd"
-            elif [ $DEGREES -ge 192 ] && [ $DEGREES -le 213 ]; then
-              DIR_NAME="Sydsydväst"
-            elif [ $DEGREES -ge 214 ] && [ $DEGREES -le 236 ]; then
-              DIR_NAME="Sydväst"
-            elif [ $DEGREES -ge 237 ] && [ $DEGREES -le 258 ]; then
-              DIR_NAME="Västsydväst"
-            elif [ $DEGREES -ge 259 ] && [ $DEGREES -le 281 ]; then
-              DIR_NAME="Väst"
-            elif [ $DEGREES -ge 282 ] && [ $DEGREES -le 303 ]; then
-              DIR_NAME="Västnordväst"
-            elif [ $DEGREES -ge 304 ] && [ $DEGREES -le 326 ]; then
-              DIR_NAME="Nordväst"
-            elif [ $DEGREES -ge 327 ] && [ $DEGREES -le 348 ]; then
-              DIR_NAME="Nordnordväst"
-            fi
-            
-            WIND_TEXT="Vind: ${DIR_NAME} (${WIND_DIR}°) ${WIND_SPEED} kt"
-          else
-            WIND_TEXT="Vind: Lugnt"
-          fi
-          
-          if echo "$METAR" | grep -q "9999"; then
-            VIS_TEXT="Sikt: >10 km"
-          else
-            VIS=$(echo "$METAR" | grep -oP '\s\d{4}\s' | xargs)
-            if [ -n "$VIS" ]; then
-              VIS_KM=$(echo "scale=1; $VIS / 1000" | bc)
-              VIS_TEXT="Sikt: ${VIS_KM} km"
-            else
-              VIS_TEXT="Sikt: Okänd"
-            fi
-          fi
-          
-          if echo "$METAR" | grep -q "NCD"; then
-            CLOUDS_TEXT="Moln: Inga moln"
-          elif echo "$METAR" | grep -q "SKC\|CLR"; then
-            CLOUDS_TEXT="Moln: Klar himmel"
-          elif echo "$METAR" | grep -q "FEW"; then
-            CLOUDS_TEXT="Moln: Några moln"
-          elif echo "$METAR" | grep -q "SCT"; then
-            CLOUDS_TEXT="Moln: Spridda moln"
-          elif echo "$METAR" | grep -q "BKN"; then
-            CLOUDS_TEXT="Moln: Molnigt"
-          elif echo "$METAR" | grep -q "OVC"; then
-            CLOUDS_TEXT="Moln: Mulet"
-          else
-            CLOUDS_TEXT="Moln: Okänt"
-          fi
-          
-          PRESSURE=$(echo "$METAR" | grep -oP 'Q\d{4}' | sed 's/Q//')
-          if [ -n "$PRESSURE" ]; then
-            PRESSURE_TEXT="Lufttryck: ${PRESSURE} hPa"
-          else
-            PRESSURE_TEXT=""
-          fi
-          
-          # Extract time and convert UTC to CET
-          TIME=$(echo "$METAR" | grep -oP '\d{6}Z' | sed 's/Z$//')
-          DAY=${TIME:0:2}
-          HOUR=${TIME:2:2}
-          MIN=${TIME:4:2}
-          
-          # Convert UTC to CET (add 1 hour for winter, 2 for summer)
-          MONTH=$(date +%m)
-          
-          if [ $MONTH -ge 4 ] && [ $MONTH -le 9 ]; then
-            HOUR_CET=$((10#$HOUR + 2))
-            TIMEZONE="CEST"
-          else
-            HOUR_CET=$((10#$HOUR + 1))
-            TIMEZONE="CET"
-          fi
-          
-          if [ $HOUR_CET -ge 24 ]; then
-            HOUR_CET=$((HOUR_CET - 24))
-            DAY=$((10#$DAY + 1))
-          fi
-          
-          HOUR_CET=$(printf "%02d" $HOUR_CET)
-          
-          TIME_DISPLAY="${DAY} ${HOUR_CET}:${MIN} ${TIMEZONE}"
-          
-          echo "TEMP_C=${TEMP_C}" >> $GITHUB_OUTPUT
-          echo "DEW_C=${DEW_C}" >> $GITHUB_OUTPUT
-          echo "TIME=${TIME_DISPLAY}" >> $GITHUB_OUTPUT
-          echo "METAR=${METAR}" >> $GITHUB_OUTPUT
-          echo "WIND_TEXT=${WIND_TEXT}" >> $GITHUB_OUTPUT
-          echo "VIS_TEXT=${VIS_TEXT}" >> $GITHUB_OUTPUT
-          echo "CLOUDS_TEXT=${CLOUDS_TEXT}" >> $GITHUB_OUTPUT
-          echo "PRESSURE_TEXT=${PRESSURE_TEXT}" >> $GITHUB_OUTPUT
-
       - name: Send notification
         run: |
           TEMP="${{ steps.fetch.outputs.TEMP_C }}"
@@ -184,35 +9,36 @@ jobs:
           CLOUDS="${{ steps.fetch.outputs.CLOUDS_TEXT }}"
           PRESSURE="${{ steps.fetch.outputs.PRESSURE_TEXT }}"
           
-          TITLE="Lycksele Weather"
+          TITLE="Umeå Weather"
           MESSAGE="Temperature: ${TEMP}°C"
           
-          # Check for snow first (highest priority)
-          if echo "$METAR" | grep -qE '\bSN\b'; then
-            if echo "$METAR" | grep -qE '\+SN\b'; then
-              EMOJI="❄️❄️❄️❄️❄️"
-              MESSAGE="Jag ser de snöar ${EMOJI}"
-            elif echo "$METAR" | grep -qE '\-SN\b'; then
-              EMOJI="❄️"
-              MESSAGE="Jag ser de snöar ${EMOJI}"
-            else
-              EMOJI="❄️❄️❄️"
-              MESSAGE="Jag ser de snöar ${EMOJI}"
-            fi
-            TITLE="${EMOJI}"
+          # Check for snow — order matters: +SN and -SN must come before plain SN
+          if echo "$METAR" | grep -qE '(^|\s)\+SN(\s|$)'; then
+            TITLE="IT's FUCKING SNOOOWING! ☃️❄️❄️❄️"
+            MESSAGE="Om du inte ser snön nu så vet jag inte vem jag ska ringa...☃️❄️❄️❄️"
           
-          elif echo "$METAR" | grep -qE '\bRA\b'; then
-            if echo "$METAR" | grep -qE '\+RA\b'; then
-              EMOJI="🌧️🌧️🌧️🌧️🌧️"
-              MESSAGE="IT'S RAINING MEN ${EMOJI}"
-            elif echo "$METAR" | grep -qE '\-RA\b'; then
-              EMOJI="🌧️🌧️"
-              MESSAGE="IT'S RAINING MEN ${EMOJI}"
-            else
-              EMOJI="🌧️🌧️🌧️"
-              MESSAGE="IT'S RAINING MEN ${EMOJI}"
-            fi
-            TITLE="${EMOJI}"
+          elif echo "$METAR" | grep -qE '(^|\s)-SN(\s|$)'; then
+            TITLE="Lätt snöfall ☃️❄️"
+            MESSAGE="DET SNÖAR VISST HENKE, KOLLA UT GENOM FÖNSTRET. ☃️❄️"
+          
+          elif echo "$METAR" | grep -qE '(^|\s)SN(\s|$)'; then
+            TITLE="Jag ser de snöar! ☃️🎶❄️❄️"
+            MESSAGE="DET SNÖAR ÄNNU MER NU HENKE, KOLLA UT!!☃️🎶❄️❄️"
+          
+          elif echo "$METAR" | grep -qE '(^|\s)\+RA(\s|$)'; then
+            EMOJI="🌧️🌧️🌧️🌧️🌧️"
+            TITLE="IT'S RAINING MEN ${EMOJI}"
+            MESSAGE="IT'S RAINING MEN ${EMOJI}"
+          
+          elif echo "$METAR" | grep -qE '(^|\s)-RA(\s|$)'; then
+            EMOJI="🌧️🌧️"
+            TITLE="IT'S RAINING MEN ${EMOJI}"
+            MESSAGE="IT'S RAINING MEN ${EMOJI}"
+          
+          elif echo "$METAR" | grep -qE '(^|\s)RA(\s|$)'; then
+            EMOJI="🌧️🌧️🌧️"
+            TITLE="IT'S RAINING MEN ${EMOJI}"
+            MESSAGE="IT'S RAINING MEN ${EMOJI}"
           
           elif [ ${TEMP} -le -20 ]; then
             EMOJI="🥶☃️❄️🌬️"
@@ -247,7 +73,7 @@ jobs:
           elif [ ${TEMP} -ge 24 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️☀️☀️"
             TITLE="Sun is shining, summer is here ${EMOJI}"
-            MESSAGE=" Temperature: ${TEMP}°C"
+            MESSAGE="Temperature: ${TEMP}°C"
           
           elif [ ${TEMP} -ge 22 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️☀️"
