@@ -1,3 +1,54 @@
+name: Weather Check
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Runs every hour — adjust as needed
+  workflow_dispatch:
+
+jobs:
+  check-weather:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch METAR data
+        id: fetch
+        run: |
+          # Umeå Airport ICAO code: ESNU
+          METAR_RAW=$(curl -s "https://aviationweather.gov/api/data/metar?ids=ESNU&format=raw")
+          echo "METAR=${METAR_RAW}" >> $GITHUB_OUTPUT
+
+          # Extract temperature and dew point (format: TT/DD e.g. 02/M01)
+          TEMP_RAW=$(echo "$METAR_RAW" | grep -oE 'M?[0-9]{2}/M?[0-9]{2}' | head -1)
+          TEMP_PART=$(echo "$TEMP_RAW" | cut -d'/' -f1)
+          DEW_PART=$(echo "$TEMP_RAW" | cut -d'/' -f2)
+
+          # Convert M prefix to negative
+          TEMP_C=$(echo "$TEMP_PART" | sed 's/^M/-/')
+          DEW_C=$(echo "$DEW_PART" | sed 's/^M/-/')
+
+          echo "TEMP_C=${TEMP_C}" >> $GITHUB_OUTPUT
+          echo "DEW_C=${DEW_C}" >> $GITHUB_OUTPUT
+
+          # Observation time (DDHHMM Z)
+          TIME=$(echo "$METAR_RAW" | grep -oE '[0-9]{6}Z')
+          echo "TIME=${TIME}" >> $GITHUB_OUTPUT
+
+          # Wind (e.g. 18005KT)
+          WIND=$(echo "$METAR_RAW" | grep -oE '[0-9]{5}(G[0-9]{2,3})?KT')
+          echo "WIND_TEXT=Wind: ${WIND}" >> $GITHUB_OUTPUT
+
+          # Visibility (e.g. 9999)
+          VIS=$(echo "$METAR_RAW" | grep -oE '\b[0-9]{4}\b' | head -1)
+          echo "VIS_TEXT=Visibility: ${VIS}m" >> $GITHUB_OUTPUT
+
+          # Clouds
+          CLOUDS=$(echo "$METAR_RAW" | grep -oE '(FEW|SCT|BKN|OVC|NCD|SKC|CLR)[0-9]*' | tr '\n' ' ')
+          echo "CLOUDS_TEXT=Clouds: ${CLOUDS}" >> $GITHUB_OUTPUT
+
+          # Pressure (QNH e.g. Q1013)
+          PRESSURE=$(echo "$METAR_RAW" | grep -oE 'Q[0-9]{4}')
+          echo "PRESSURE_TEXT=QNH: ${PRESSURE}" >> $GITHUB_OUTPUT
+
       - name: Send notification
         run: |
           TEMP="${{ steps.fetch.outputs.TEMP_C }}"
@@ -8,98 +59,98 @@
           VIS="${{ steps.fetch.outputs.VIS_TEXT }}"
           CLOUDS="${{ steps.fetch.outputs.CLOUDS_TEXT }}"
           PRESSURE="${{ steps.fetch.outputs.PRESSURE_TEXT }}"
-          
+
           TITLE="Umeå Weather"
           MESSAGE="Temperature: ${TEMP}°C"
-          
+
           # Check for snow — order matters: +SN and -SN must come before plain SN
           if echo "$METAR" | grep -qE '(^|\s)\+SN(\s|$)'; then
             TITLE="IT's FUCKING SNOOOWING! ☃️❄️❄️❄️"
             MESSAGE="Om du inte ser snön nu så vet jag inte vem jag ska ringa...☃️❄️❄️❄️"
-          
+
           elif echo "$METAR" | grep -qE '(^|\s)-SN(\s|$)'; then
             TITLE="Lätt snöfall ☃️❄️"
             MESSAGE="DET SNÖAR VISST HENKE, KOLLA UT GENOM FÖNSTRET. ☃️❄️"
-          
+
           elif echo "$METAR" | grep -qE '(^|\s)SN(\s|$)'; then
             TITLE="Jag ser de snöar! ☃️🎶❄️❄️"
             MESSAGE="DET SNÖAR ÄNNU MER NU HENKE, KOLLA UT!!☃️🎶❄️❄️"
-          
+
           elif echo "$METAR" | grep -qE '(^|\s)\+RA(\s|$)'; then
             EMOJI="🌧️🌧️🌧️🌧️🌧️"
             TITLE="IT'S RAINING MEN ${EMOJI}"
             MESSAGE="IT'S RAINING MEN ${EMOJI}"
-          
+
           elif echo "$METAR" | grep -qE '(^|\s)-RA(\s|$)'; then
             EMOJI="🌧️🌧️"
             TITLE="IT'S RAINING MEN ${EMOJI}"
             MESSAGE="IT'S RAINING MEN ${EMOJI}"
-          
+
           elif echo "$METAR" | grep -qE '(^|\s)RA(\s|$)'; then
             EMOJI="🌧️🌧️🌧️"
             TITLE="IT'S RAINING MEN ${EMOJI}"
             MESSAGE="IT'S RAINING MEN ${EMOJI}"
-          
+
           elif [ ${TEMP} -le -20 ]; then
             EMOJI="🥶☃️❄️🌬️"
             TITLE="Welcome to Yakutsk! ${EMOJI}"
             MESSAGE="Temperature: ${TEMP}°C"
-          
+
           elif [ ${TEMP} -gt -20 ] && [ ${TEMP} -le -5 ]; then
             EMOJI="😶‍🌫️🥺⛄️"
             TITLE="Ingen sommarvärme än ${EMOJI}"
             MESSAGE="Temperature: ${TEMP}°C"
-          
+
           elif [ ${TEMP} -gt -5 ] && [ ${TEMP} -le 10 ]; then
             EMOJI="🌸👏"
             TITLE="Våren är här ${EMOJI}"
             MESSAGE="Temperature: ${TEMP}°C"
-          
+
           elif [ ${TEMP} -ge 30 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️☀️☀️☀️☀️🏝️🏖️"
             TITLE="Sun is shining, summer is here ${EMOJI}"
             MESSAGE="Temperature: ${TEMP}°C"
-          
+
           elif [ ${TEMP} -ge 28 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️☀️☀️☀️☀️"
             TITLE="Sun is shining, summer is here ${EMOJI}"
             MESSAGE="Temperature: ${TEMP}°C"
-          
+
           elif [ ${TEMP} -ge 26 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️☀️☀️☀️"
             TITLE="Sun is shining, summer is here ${EMOJI}"
             MESSAGE="Temperature: ${TEMP}°C"
-          
+
           elif [ ${TEMP} -ge 24 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️☀️☀️"
             TITLE="Sun is shining, summer is here ${EMOJI}"
             MESSAGE="Temperature: ${TEMP}°C"
-          
+
           elif [ ${TEMP} -ge 22 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️☀️"
             TITLE="Sun is shining, summer is here ${EMOJI}"
             MESSAGE="Temperature: ${TEMP}°C"
-          
+
           elif [ ${TEMP} -ge 20 ] && (echo "$METAR" | grep -qE "NCD|SKC|CLR|FEW"); then
             EMOJI="☀️"
             TITLE="Sun is shining, summer is here ${EMOJI}"
             MESSAGE="Temperature: ${TEMP}°C"
-          
+
           else
             EMOJI="🌤️🏞️"
             TITLE="Umeå Weather ${EMOJI}"
             MESSAGE="Temperature: ${TEMP}°C"
           fi
-          
+
           curl -H "Title: ${TITLE}" \
                -H "Priority: default" \
                -d "${MESSAGE}
-          
+
           Temperatur: ${TEMP}°C (Daggpunkt: ${DEW}°C)
           ${WIND}
           ${VIS}
           ${CLOUDS}
           ${PRESSURE}
-          
+
           Observerad: ${TIME}" \
                https://ntfy.sh/lgweatherappESNU
