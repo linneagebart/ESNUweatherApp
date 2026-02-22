@@ -83,67 +83,67 @@ jobs:
           echo "WIND_TEXT=${WIND_TEXT}" >> $GITHUB_OUTPUT
 
           # ── Visibility ───────────────────────────────────────────
-          # 9999 = 10 km or more; other 4-digit values are meters
-          VIS_RAW=$(echo "$METAR_RAW" | grep -oE '\b(9999|[0-9]{4})\b' | head -1)
-          if [ -n "$VIS_RAW" ]; then
-            VIS_INT=$((10#$VIS_RAW))
-            if [ "$VIS_INT" -eq 9999 ]; then
-              VIS_TEXT="Sikt: ≥ 10 km"
-            elif [ "$VIS_INT" -ge 500 ]; then
-              VIS_KM=$(echo "scale=1; $VIS_INT / 1000" | bc)
-              VIS_TEXT="Sikt: ${VIS_KM} km"
-            else
-              VIS_TEXT="Sikt: ${VIS_INT} m ⚠️"
-            fi
+          # CAVOK = ceiling and visibility OK (≥10 km, no cloud below 1500m, no CB)
+          # 9999  = ≥ 10 km; other 4-digit values are meters
+          if echo "$METAR_RAW" | grep -qE '\bCAVOK\b'; then
+            VIS_TEXT="Sikt: ≥ 10 km"
           else
-            VIS_TEXT="Sikt: Ej tillgänglig"
+            VIS_RAW=$(echo "$METAR_RAW" | grep -oE '\b(9999|[0-9]{4})\b' | head -1)
+            if [ -n "$VIS_RAW" ]; then
+              VIS_INT=$((10#$VIS_RAW))
+              if [ "$VIS_INT" -eq 9999 ]; then
+                VIS_TEXT="Sikt: ≥ 10 km"
+              elif [ "$VIS_INT" -ge 500 ]; then
+                VIS_KM=$(echo "scale=1; $VIS_INT / 1000" | bc)
+                VIS_TEXT="Sikt: ${VIS_KM} km"
+              else
+                VIS_TEXT="Sikt: ${VIS_INT} m ⚠️"
+              fi
+            else
+              VIS_TEXT="Sikt: Ej tillgänglig"
+            fi
           fi
           echo "VIS_TEXT=${VIS_TEXT}" >> $GITHUB_OUTPUT
 
           # ── Clouds ───────────────────────────────────────────────
+          # CAVOK = inga moln under 1500 m, inga cumulonimbus
           # Height code = hundreds of feet; convert to meters
-          CLOUD_LINES=""
-          while IFS= read -r TOKEN; do
-            [ -z "$TOKEN" ] && continue
-            CODE=$(echo "$TOKEN" | grep -oE '^(FEW|SCT|BKN|OVC|NCD|NSC|SKC|CLR)')
-            HGT=$(echo  "$TOKEN" | grep -oE '[0-9]+$')
+          if echo "$METAR_RAW" | grep -qE '\bCAVOK\b'; then
+            CLOUD_LINES="Inga moln under 1500 m\n"
+          else
+            CLOUD_LINES=""
+            while IFS= read -r TOKEN; do
+              [ -z "$TOKEN" ] && continue
+              CODE=$(echo "$TOKEN" | grep -oE '^(FEW|SCT|BKN|OVC|NCD|NSC|SKC|CLR)')
+              HGT=$(echo  "$TOKEN" | grep -oE '[0-9]+$')
 
-            case $CODE in
-              FEW) SWE="Några moln"              ;;
-              SCT) SWE="Spridda moln"            ;;
-              BKN) SWE="Molnigt"                 ;;
-              OVC) SWE="Mulet"                   ;;
-              NCD|NSC) SWE="Inga signifikanta moln" ;;
-              SKC|CLR) SWE="Klar himmel"         ;;
-              *)   SWE="$CODE"                   ;;
-            esac
+              case $CODE in
+                FEW) SWE="Några moln"                 ;;
+                SCT) SWE="Spridda moln"               ;;
+                BKN) SWE="Molnigt"                    ;;
+                OVC) SWE="Mulet"                      ;;
+                NCD|NSC) SWE="Inga signifikanta moln" ;;
+                SKC|CLR) SWE="Klar himmel"            ;;
+                *)   SWE="$CODE"                      ;;
+              esac
 
-            if [ -n "$HGT" ] && [ "$((10#$HGT))" -gt 0 ]; then
-              HGT_M=$(echo "scale=0; $((10#$HGT)) * 100 * 3048 / 10000" | bc)
-              HGT_FT=$(( 10#$HGT * 100 ))
-              CLOUD_LINES="${CLOUD_LINES}${SWE} vid ${HGT_M} m (${HGT_FT} ft)\n"
-            else
-              CLOUD_LINES="${CLOUD_LINES}${SWE}\n"
-            fi
-          done <<< "$(echo "$METAR_RAW" | grep -oE '(FEW|SCT|BKN|OVC|NCD|NSC|SKC|CLR)[0-9]*')"
+              if [ -n "$HGT" ] && [ "$((10#$HGT))" -gt 0 ]; then
+                HGT_M=$(echo "scale=0; $((10#$HGT)) * 100 * 3048 / 10000" | bc)
+                HGT_FT=$(( 10#$HGT * 100 ))
+                CLOUD_LINES="${CLOUD_LINES}${SWE} vid ${HGT_M} m (${HGT_FT} ft)\n"
+              else
+                CLOUD_LINES="${CLOUD_LINES}${SWE}\n"
+              fi
+            done <<< "$(echo "$METAR_RAW" | grep -oE '(FEW|SCT|BKN|OVC|NCD|NSC|SKC|CLR)[0-9]*')"
 
-          [ -z "$CLOUD_LINES" ] && CLOUD_LINES="Molninfo ej tillgänglig\n"
+            [ -z "$CLOUD_LINES" ] && CLOUD_LINES="Molninfo ej tillgänglig\n"
+          fi
 
           {
             echo "CLOUDS_TEXT<<ENDOFCLOUDS"
             echo -e "Moln: ${CLOUD_LINES}"
             echo "ENDOFCLOUDS"
           } >> $GITHUB_OUTPUT
-
-          # ── Pressure ─────────────────────────────────────────────
-          PRESSURE_RAW=$(echo "$METAR_RAW" | grep -oE 'Q[0-9]{4}' | head -1)
-          if [ -n "$PRESSURE_RAW" ]; then
-            # Strip leading zeros
-            PRESSURE_VAL=$(echo "$PRESSURE_RAW" | grep -oE '[0-9]+' | sed 's/^0*//')
-            echo "PRESSURE_TEXT=Lufttryck: ${PRESSURE_VAL} hPa" >> $GITHUB_OUTPUT
-          else
-            echo "PRESSURE_TEXT=Lufttryck: Ej tillgänglig" >> $GITHUB_OUTPUT
-          fi
 
       - name: Send notification
         run: |
@@ -154,7 +154,6 @@ jobs:
           WIND="${{ steps.fetch.outputs.WIND_TEXT }}"
           VIS="${{  steps.fetch.outputs.VIS_TEXT }}"
           CLOUDS="${{ steps.fetch.outputs.CLOUDS_TEXT }}"
-          PRESSURE="${{ steps.fetch.outputs.PRESSURE_TEXT }}"
 
           TITLE="Umeå Väder"
           MESSAGE="Temperatur: ${TEMP}°C"
@@ -233,7 +232,6 @@ jobs:
           ${WIND}
           ${VIS}
           ${CLOUDS}
-          ${PRESSURE}
 
           Observerad: ${TIME}" \
                https://ntfy.sh/lgweatherappESNU
