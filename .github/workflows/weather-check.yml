@@ -2,7 +2,12 @@ name: Weather Check
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Runs every hour
+    - cron: '25 5 * * *'   # 06:30 CET
+    - cron: '55 8 * * *'   # 09:50 CET
+    - cron: '55 11 * * *'   # 13:00 CET
+    - cron: '20 13 * * *'  # 14:25 CET
+    - cron: '50 14 * * *'  # 15:55 CET
+    - cron: '0 19 * * *'   # 20:00 CET
   workflow_dispatch:
 
 jobs:
@@ -23,6 +28,9 @@ jobs:
           DEW_PART=$(echo  "$TEMP_RAW" | cut -d'/' -f2)
           TEMP_C=$(echo "$TEMP_PART" | sed 's/^M/-/' | sed 's/^-0*\([1-9]\)/-\1/' | sed 's/^0*//')
           DEW_C=$(echo  "$DEW_PART"  | sed 's/^M/-/' | sed 's/^-0*\([1-9]\)/-\1/' | sed 's/^0*//')
+          # Fallback to 0 if parsing failed (prevents integer comparison errors)
+          TEMP_C=${TEMP_C:-0}
+          DEW_C=${DEW_C:-0}
           echo "TEMP_C=${TEMP_C}" >> $GITHUB_OUTPUT
           echo "DEW_C=${DEW_C}"   >> $GITHUB_OUTPUT
 
@@ -44,6 +52,7 @@ jobs:
           if [ -n "$WIND_RAW" ]; then
             WIND_DIR=$(echo "$WIND_RAW" | grep -oE '^(VRB|[0-9]{3})')
             WIND_KT=$(echo  "$WIND_RAW" | sed 's/^\(VRB\|[0-9]\{3\}\)//' | grep -oE '^[0-9]{2,3}')
+            WIND_KT=${WIND_KT:-0}
             WIND_MS=$(echo "scale=1; $WIND_KT * 0.514444" | bc)
 
             if [ "$WIND_DIR" = "VRB" ]; then
@@ -154,6 +163,9 @@ jobs:
           WIND="${{ steps.fetch.outputs.WIND_TEXT }}"
           VIS="${{  steps.fetch.outputs.VIS_TEXT }}"
           CLOUDS="${{ steps.fetch.outputs.CLOUDS_TEXT }}"
+
+          # Guard against empty TEMP (fallback to 0)
+          TEMP=${TEMP:-0}
 
           TITLE="Umeå Väder"
           MESSAGE="Temperatur: ${TEMP}°C"
