@@ -2,11 +2,11 @@ name: ESNU Weather Check
 
 on:
   schedule:
-    - cron: '35 5 * * *'
-    - cron: '00 10 * * *'
-    - cron: '00 13 * * *'
-    - cron: '00 15 * * *'
-    - cron: '05 20 * * *'
+    - cron: '32 5 * * *'
+    - cron: '03 10 * * *'
+    - cron: '12 13 * * *'
+    - cron: '36 15 * * *'
+    - cron: '48 19 * * *'
   
   workflow_dispatch:
 
@@ -31,7 +31,7 @@ jobs:
           
           echo "Full METAR: $METAR"
           
-          TEMP=$(echo "$METAR" | grep -oP '(M?\d{2})/M?\d{2}' | cut -d'/' -f1)
+          TEMP=$(echo "$METAR" | grep -oP '(M?\d{2})/M?\d{2}' | head -1 | cut -d'/' -f1)
           
           if [ -z "$TEMP" ]; then
             echo "Failed to extract temperature"
@@ -46,7 +46,7 @@ jobs:
             TEMP_C=$(echo $TEMP_C | sed 's/^0//')
           fi
           
-          DEWPOINT=$(echo "$METAR" | grep -oP '(M?\d{2})/(M?\d{2})' | cut -d'/' -f2)
+          DEWPOINT=$(echo "$METAR" | grep -oP '(M?\d{2})/(M?\d{2})' | head -1 | cut -d'/' -f2)
           if [[ $DEWPOINT == M* ]]; then
             DEW_C="-${DEWPOINT:1}"
             DEW_C=$(echo $DEW_C | sed 's/-0/-/')
@@ -217,11 +217,19 @@ jobs:
             
           elif [ "${TEMP}" -gt -20 ] && [ "${TEMP}" -le -5 ]; then
             TITLE="Ingen sommarvärme än 😶‍🌫️🥺⛄️"
-            MESSAGE="Ingen sommarvärme än😶‍🌫️🥺⛄️"
+            MESSAGE="Det är bara lagomt kallt nu!😶‍🌫️🥺⛄️"
             
-          elif [ "${TEMP}" -gt -5 ] && [ "${TEMP}" -le 10 ]; then
-            TITLE="Våren är här 🌸👏"
-            MESSAGE="Våren är här 🌸👏"
+          elif [ "${TEMP}" -gt -5 ] && [ "${TEMP}" -le 0 ]; then
+            TITLE="De börjar bli lite värkänsla nu 🌸👏"
+            MESSAGE="Vintern börjar lida mot sitt slut nu!  🌸👏"
+
+          elif [ "${TEMP}" -gt 0 ] && [ "${TEMP}" -le 15 ]; then
+            TITLE="Våren är officiellt här!☀️🌸👏"
+            MESSAGE="Häng inte bort vinterjackan än dock, de behöver bli lite varmare🌸👏"
+
+          elif [ "${TEMP}" -gt 16 ] && [ "${TEMP}" -le 19 ]; then
+            TITLE="Pre-Summer är hääär!☀️🌸👏"
+            MESSAGE="Nu är sommaren runt hörnet bara!🌸👏"
             
           elif [ "${TEMP}" -ge 30 ] && echo "$METAR" | grep -qE 'NCD|SKC|CLR|FEW'; then
             TITLE="Sun is shining, summer is here ☀️☀️☀️☀️☀️🏝️🏖️"
