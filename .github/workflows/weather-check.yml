@@ -127,6 +127,8 @@ jobs:
             CLOUDS_TEXT="Moln: Molnigt"
           elif echo "$METAR" | grep -q "OVC"; then
             CLOUDS_TEXT="Moln: Mulet"
+          elif echo "$METAR" | grep -q "CAVOK"; then
+            CLOUDS_TEXT="Moln: Inte ett moln"
           else
             CLOUDS_TEXT="Moln: Okänt"
           fi
@@ -188,71 +190,71 @@ jobs:
           
           # ── Weather condition checks (order matters!) ────────────
           if echo "$METAR" | grep -qE '(^|\s)\+SN(\s|$)'; then
-            TITLE="IT's FUCKING SNOOOWING! ☃️❄️❄️❄️"
+            TITLE="UÅ - IT's FUCKING SNOOOWING! ☃️❄️❄️❄️"
             MESSAGE="Om du inte ser snön nu så vet jag inte vem jag ska ringa...☃️❄️❄️❄️"
             
           elif echo "$METAR" | grep -qE '(^|\s)-SN(\s|$)'; then
-            TITLE="Lätt snöfall ☃️❄️"
+            TITLE="UÅ - Lätt snöfall ☃️❄️"
             MESSAGE="DET SNÖAR VISST HENKE, KOLLA UT GENOM FÖNSTRET. ☃️❄️"
             
           elif echo "$METAR" | grep -qE '(^|\s)SN(\s|$)'; then
-            TITLE="Jag ser de snöar! ☃️🎶❄️❄️"
+            TITLE="UÅ - Jag ser de snöar! ☃️🎶❄️❄️"
             MESSAGE="DET SNÖAR ÄNNU MER NU HENKE, KOLLA UT!!☃️🎶❄️❄️"
             
           elif echo "$METAR" | grep -qE '(^|\s)\+RA(\s|$)'; then
-            TITLE="IT'S RAINING MEN 🌧️🌧️🌧️"
+            TITLE="UÅ - IT'S RAINING MEN 🌧️🌧️🌧️"
             MESSAGE="Det spöregnar helt klart 🌧️🌧️🌧️"
             
           elif echo "$METAR" | grep -qE '(^|\s)-RA(\s|$)'; then
-            TITLE="IT'S RAINING MEN 🌧️"
+            TITLE="UÅ - IT'S RAINING MEN 🌧️"
             MESSAGE="Klassas de som duggregn? 🌧️"
             
           elif echo "$METAR" | grep -qE '(^|\s)RA(\s|$)'; then
-            TITLE="IT'S RAINING MEN 🌧️🌧️"
+            TITLE="UÅ - IT'S RAINING MEN 🌧️🌧️"
             MESSAGE="Det spöregnar nästan.. 🌧️🌧️"
             
           elif [ "${TEMP}" -le -20 ]; then
-            TITLE="Welcome to Yakutsk! 🥶☃️❄️🌬️"
+            TITLE="UÅ - Welcome to Yakutsk! 🥶☃️❄️🌬️"
             MESSAGE="Det är kallt som FAN!"
             
           elif [ "${TEMP}" -gt -20 ] && [ "${TEMP}" -le -5 ]; then
-            TITLE="Ingen sommarvärme än 😶‍🌫️🥺⛄️"
+            TITLE="UÅ - Ingen sommarvärme än 😶‍🌫️🥺⛄️"
             MESSAGE="Det är bara lagomt kallt nu!😶‍🌫️🥺⛄️"
             
           elif [ "${TEMP}" -gt -5 ] && [ "${TEMP}" -le 0 ]; then
-            TITLE="De börjar bli lite värkänsla nu 🌸👏"
+            TITLE="UÅ - De börjar bli lite värkänsla nu 🌸👏"
             MESSAGE="Vintern börjar lida mot sitt slut nu!  🌸👏"
 
           elif [ "${TEMP}" -gt 0 ] && [ "${TEMP}" -le 15 ]; then
-            TITLE="Våren är officiellt här!☀️🌸👏"
+            TITLE="UÅ - Våren är officiellt här!☀️🌸👏"
             MESSAGE="Häng inte bort vinterjackan än dock, de behöver bli lite varmare🌸👏"
 
           elif [ "${TEMP}" -gt 16 ] && [ "${TEMP}" -le 19 ]; then
-            TITLE="Pre-Summer är hääär!☀️🌸👏"
+            TITLE="UÅ - Pre-Summer är hääär!☀️🌸👏"
             MESSAGE="Nu är sommaren runt hörnet bara!🌸👏"
             
           elif [ "${TEMP}" -ge 30 ] && echo "$METAR" | grep -qE 'NCD|SKC|CLR|FEW'; then
-            TITLE="Sun is shining, summer is here ☀️☀️☀️☀️☀️🏝️🏖️"
+            TITLE="UÅ - Sun is shining, summer is here ☀️☀️☀️☀️☀️🏝️🏖️"
             MESSAGE="Den här värmen händer aldrig i Sverige!"
             
           elif [ "${TEMP}" -ge 28 ] && echo "$METAR" | grep -qE 'NCD|SKC|CLR|FEW'; then
-            TITLE="Sun is shining, summer is here ☀️☀️☀️☀️☀️"
+            TITLE="UÅ - Sun is shining, summer is here ☀️☀️☀️☀️☀️"
             MESSAGE="Nu är de fan sommar i Sverige!"
             
           elif [ "${TEMP}" -ge 26 ] && echo "$METAR" | grep -qE 'NCD|SKC|CLR|FEW'; then
-            TITLE="Sun is shining, summer is here ☀️☀️☀️☀️"
+            TITLE="UÅ - Sun is shining, summer is here ☀️☀️☀️☀️"
             MESSAGE="De är soooooommmmmmmaaaaaaar!!!"
             
           elif [ "${TEMP}" -ge 24 ] && echo "$METAR" | grep -qE 'NCD|SKC|CLR|FEW'; then
-            TITLE="Sun is shining, summer is here ☀️☀️☀️"
+            TITLE="UÅ - Sun is shining, summer is here ☀️☀️☀️"
             MESSAGE="ooooh sommar!! UNDERBART!"
             
           elif [ "${TEMP}" -ge 22 ] && echo "$METAR" | grep -qE 'NCD|SKC|CLR|FEW'; then
-            TITLE="Sun is shining, summer is here ☀️☀️"
+            TITLE="UÅ - Sun is shining, summer is here ☀️☀️"
             MESSAGE="Den officiella sommartempen är här, MAGISKT!"
             
           elif [ "${TEMP}" -ge 20 ] && echo "$METAR" | grep -qE 'NCD|SKC|CLR|FEW'; then
-            TITLE="Sun is shining, summer is here ☀️"
+            TITLE="UÅ - Sun is shining, summer is here ☀️"
             MESSAGE="Det är nästan tillräckligt varmt, SKOJA BARA, vi lever i Sverige så allt över +10=sommar!"
             
           else
